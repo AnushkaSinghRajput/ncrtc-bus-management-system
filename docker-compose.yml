@@ -1,0 +1,56 @@
+services:
+  db:
+    image: postgis/postgis:16-3.4
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-ncrtc}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ncrtc_demo_password}
+      POSTGRES_DB: ${POSTGRES_DB:-ncrtc_bms}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-ncrtc} -d ${POSTGRES_DB:-ncrtc_bms}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  backend:
+    build: ./backend
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-ncrtc}:${POSTGRES_PASSWORD:-ncrtc_demo_password}@db:5432/${POSTGRES_DB:-ncrtc_bms}
+      SEED_ON_STARTUP: ${SEED_ON_STARTUP:-true}
+      UPLOAD_DIR: /app/uploads
+    ports:
+      - "8000:8000"
+    volumes:
+      - uploads:/app/uploads
+    depends_on:
+      db:
+        condition: service_healthy
+
+  gps_tick:
+    build: ./backend
+    command: ["python", "scripts/gps_tick.py"]
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-ncrtc}:${POSTGRES_PASSWORD:-ncrtc_demo_password}@db:5432/${POSTGRES_DB:-ncrtc_bms}
+      GPS_TICK_INTERVAL_SECONDS: ${GPS_TICK_INTERVAL_SECONDS:-7}
+    depends_on:
+      backend:
+        condition: service_started
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:8000}
+    ports:
+      - "5173:80"
+    depends_on:
+      - backend
+
+volumes:
+  pgdata:
+  uploads:

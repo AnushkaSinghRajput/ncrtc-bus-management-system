@@ -199,7 +199,7 @@ export default function AdminPage() {
       {tab === "vehicles" ? (
         <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
           <div className="panel overflow-hidden">
-            <div className="table-head grid grid-cols-[minmax(0,1fr)_120px_200px] gap-4 px-5 py-3">
+            <div className="data-head grid grid-cols-[minmax(0,1fr)_120px_200px] gap-4 px-5 py-3">
               <span>Registration</span>
               <span>Depot</span>
               <span>Status</span>
@@ -211,7 +211,7 @@ export default function AdminPage() {
             ) : (
               <ul className="max-h-[560px] overflow-y-auto">
                 {shownVehicles.map((v) => (
-                  <li key={v.id} className="table-row grid grid-cols-[minmax(0,1fr)_120px_200px] items-center gap-4 px-5 py-2.5 text-sm">
+                  <li key={v.id} className="data-row grid grid-cols-[minmax(0,1fr)_120px_200px] items-center gap-4 px-5 py-2.5 text-sm">
                     <span className="flex items-center gap-3">
                       <span className="font-medium text-ncrtc-navy">{v.reg_no}</span>
                       <Badge value={v.status} />
@@ -281,7 +281,7 @@ export default function AdminPage() {
                 Show inactive
               </label>
             </div>
-            <div className="table-head grid grid-cols-[minmax(0,1fr)_170px_80px_110px] gap-4 px-5 py-3">
+            <div className="data-head grid grid-cols-[minmax(0,1fr)_170px_80px_110px] gap-4 px-5 py-3">
               <span>Name</span>
               <span>Role</span>
               <span>Depot</span>
@@ -296,7 +296,7 @@ export default function AdminPage() {
                 {shownUsers.map((u) => (
                   <li
                     key={u.id}
-                    className={`table-row grid grid-cols-[minmax(0,1fr)_170px_80px_110px] items-center gap-4 px-5 py-2.5 text-sm ${
+                    className={`data-row grid grid-cols-[minmax(0,1fr)_170px_80px_110px] items-center gap-4 px-5 py-2.5 text-sm ${
                       u.is_active === false ? "opacity-60" : ""
                     }`}
                   >

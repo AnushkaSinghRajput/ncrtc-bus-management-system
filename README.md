@@ -4,6 +4,17 @@ Student/capstone MVP for the NCRTC RRTS **feeder-bus** network: live fleet view 
 
 > **Assumption (be honest in demos):** Live GPS is **simulated**. The `gps_tick` service inserts pings every few seconds; the map polls `/api/avls/live` every 5s. Seeded dummy depots/vehicles/users/routes power the demo — not hardware GPS or production ingest.
 
+## Features
+
+| Module | What you can do |
+| --- | --- |
+| **AVLS** | Live map (5s refresh) with motion-coloured markers, depot polygons, searchable fleet list, 30-min trails; **PostGIS geofence breach alerts**; **trip replay** with scrubber, 1×/5×/20× playback and trip stats |
+| **Scheduling** | Weekly roster grid with week navigation, **copy last week**, click-to-assign, per-duty or whole-week publishing, driver conflict checks; route builder |
+| **IMS** | Raise incidents with photos, panic button (P1 with last GPS position), **SLA timers** with breach filter, valid-only status transitions, audit timeline, link to the vehicle's path that day |
+| **CMS** | Targeted notices (everyone / drivers / role / depot), inbox with unread filter, explicit acknowledgement, **who hasn't read it** receipts |
+| **Admin** | Register vehicles and change status, create/deactivate accounts with role and depot |
+| **Driver app** | Phone-first `/driver` PWA: today's duty, stops, acknowledge, notices, sticky panic bar with confirmation |
+
 ## Stack
 
 | Layer | Choice |
@@ -78,22 +89,23 @@ Seed size: **5 depots**, **~50 vehicles**, **~80 users**, **12 routes**, one wee
 ## How to test
 
 ```bash
-# With stack running:
+# With stack running (20 API tests against the seeded Postgres/PostGIS stack):
 docker compose exec backend pytest -q
 
-# Frontend unit tests:
+# Frontend unit tests (12 tests: dates, API client, geo maths, SLA rules, app shell):
 cd frontend && npm install && npm test
 ```
 
 ## Demo flow (PRD)
 
 1. `docker compose up --build` — seed runs.  
-2. Login `admin` → Scheduling → create a route (pick stops) → Notices → publish.  
-3. Login `manager1` → roster → **Publish week** (or Publish on a draft cell).  
-4. Login `driver1` (narrow window) → `/driver` → acknowledge duty → open notice → ack if required → **PANIC**.  
-5. Login `control1` → Live Map (markers move) → click a bus → Incidents → ack/assign the P1.  
-6. History → vehicle + yesterday → path on map.  
-7. http://localhost:8000/docs  
+2. Login `admin` → Scheduling → create a route (pick stops) → Notices → **New notice** → publish.  
+3. Login `manager1` → roster → **Copy last week** on next week → **Publish week** (or Publish on a draft cell).  
+4. Login `driver1` (narrow window) → `/driver` → acknowledge duty → open notice → acknowledge → **Panic** → confirm.  
+5. Login `control1` → Live Map (markers move, geofence banner) → pick a bus → **Replay today** → Incidents → SLA chip on the P1 → acknowledge / assign.  
+6. Back as `admin` → Notices → open the notice → read receipts show who hasn't read it yet.  
+7. Fleet & Users → put a bus into maintenance, create a driver account.  
+8. http://localhost:8000/docs  
 
 ## Repo layout
 
@@ -115,14 +127,28 @@ media/ncrtc-bms/   screenshots
 
 ![Live map](media/ncrtc-bms/04-live-map.png)
 
-![Incidents](media/ncrtc-bms/05-incidents.png)
+![Trip replay](media/ncrtc-bms/08-trip-replay.png)
 
-![Driver PWA](media/ncrtc-bms/06-driver-pwa.png)
+![Incidents with SLA timers](media/ncrtc-bms/05-incidents.png)
+
+![Incident detail](media/ncrtc-bms/07-incident-detail.png)
+
+![Notice read receipts](media/ncrtc-bms/09-notices-receipts.png)
+
+![Fleet management](media/ncrtc-bms/10-admin-fleet.png)
+
+![User management](media/ncrtc-bms/11-admin-users.png)
+
+<p>
+  <img alt="Driver PWA" src="media/ncrtc-bms/06-driver-pwa.png" width="300" />
+  <img alt="Panic confirmation" src="media/ncrtc-bms/13-driver-panic-confirm.png" width="300" />
+</p>
 
 ## Limitations (known)
 
 - GPS is simulated (tick script), not device ingest / WebSocket.  
-- Stretch items not built: geofence breach banners, SLA timers, trip replay scrubber.  
+- SLA targets are applied in the UI; there is no server-side escalation or notification on breach.  
+- Geofence alerts are a live query, not stored/acknowledged events.  
 - Incident photos stored on a local Docker volume (`uploads/`), not object storage.  
 - Executive read-only role from the PRD narrative is not a sixth role; use admin/control for reports.
 

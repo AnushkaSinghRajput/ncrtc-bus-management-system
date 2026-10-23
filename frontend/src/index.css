@@ -65,10 +65,10 @@ body {
   .panel {
     @apply rounded-2xl border border-white/80 bg-white/90 shadow-[0_1px_2px_rgba(16,42,60,0.04),0_12px_32px_rgba(16,42,60,0.06)] backdrop-blur;
   }
-  .table-head {
+  .data-head {
     @apply bg-slate-50/80 text-left text-[11px] font-semibold uppercase tracking-wider text-slate-500;
   }
-  .table-row {
+  .data-row {
     @apply border-t border-slate-100 transition hover:bg-ncrtc-mist/60;
   }
 }

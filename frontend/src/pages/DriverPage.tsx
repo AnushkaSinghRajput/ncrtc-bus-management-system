@@ -156,9 +156,9 @@ export default function DriverPage() {
                   <div className="font-display text-4xl leading-none text-ncrtc-navy">{duty.route?.code ?? `R${duty.route_id}`}</div>
                   <div className="mt-1 text-sm text-slate-600">{duty.route?.name}</div>
                 </div>
-                <div className="rounded-xl bg-ncrtc-mist px-3 py-2 text-right">
+                <div className="shrink-0 rounded-xl bg-ncrtc-mist px-3 py-2 text-right">
                   <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Bus</div>
-                  <div className="font-semibold text-ncrtc-navy">{duty.vehicle?.reg_no ?? duty.vehicle_id}</div>
+                  <div className="whitespace-nowrap font-semibold text-ncrtc-navy">{duty.vehicle?.reg_no ?? duty.vehicle_id}</div>
                 </div>
               </div>
 

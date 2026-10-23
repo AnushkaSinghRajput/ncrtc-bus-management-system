@@ -69,7 +69,9 @@ Schema changes: Alembic (`backend/alembic/versions/001_initial.py`). Backend als
 - `GET /api/avls/live` — latest ping per vehicle (+ today’s duty driver/route).  
 - `GET /api/avls/vehicles/{id}/trail` — last N minutes polyline.  
 - `GET /api/avls/history` — pings for a vehicle+day.  
-- Frontend Leaflet map polls live every **5s**.  
+- `GET /api/avls/geofence-alerts` — buses with **no published duty today** whose latest ping (last 10 min) is outside their depot polygon. Uses PostGIS `ST_Contains` on `depot.polygon_geojson` and `ST_Distance` (geography) for distance from depot; depot-scoped for managers.  
+- Frontend Leaflet map polls live + geofence every **5s**; markers are coloured by motion state (moving / stopped / no signal > 2 min), depot polygons are drawn, and the map only re-fits on depot change.  
+- History page replays a day: full trail + travelled portion, scrubber, play/pause at 1×/5×/20×, distance (haversine), time on road, average/top speed. Deep-linkable with `?vehicle=&day=`.  
 - `scripts/gps_tick.py` advances active vehicles along route stops.
 
 ### Scheduling
@@ -77,20 +79,27 @@ Schema changes: Alembic (`backend/alembic/versions/001_initial.py`). Backend als
 - CRUD routes with ordered stops.  
 - Duties: assign (draft) → publish (single or week) → driver acknowledge.  
 - Conflict check: one driver cannot get two duties on the same day.  
-- Roster grid is drivers × week days (local calendar dates).
+- `POST /api/duties/copy-week?from_week_start=&to_week_start=` copies a roster into another week as drafts, skipping drivers already rostered on the target day.  
+- Roster grid is drivers × week days (local calendar dates) with week navigation, status-coloured cells, sticky header/driver column, and click-to-assign on empty cells.
 
 ### IMS
 
 - Raise via multipart form (optional photo) or JSON.  
-- Panic endpoint creates **P1** with today’s vehicle when present.  
-- State machine: `open → acknowledged → in_progress → resolved → closed` (each change needs a note + `incident_event` row).  
+- Panic endpoint creates **P1** with today’s vehicle and that bus’s **last GPS position** as the incident location.  
+- State machine: `open → acknowledged → in_progress → resolved → closed` (each change needs a note + `incident_event` row). The UI only offers transitions the backend allows.  
+- SLA targets (frontend, `lib/sla.ts`): P1 ack 15m / resolve 4h, P2 1h / 24h, P3 4h / 72h, measured from `created_at`. Live countdown chips, breach counter and “breached only” filter.  
 - Filters: status, severity, depot, mine-only.
 
 ### CMS
 
 - Notices with `audience_json` (`all`, `all_drivers`, `role`, `depot`).  
 - Open → mark read; optional **acknowledgement required**.  
-- Admin/manager can list read receipts.
+- `GET /api/notices/{id}/audience` resolves every active targeted user with read/ack state and totals, so managers see who **hasn’t** read a notice (depot-scoped for managers). `GET /api/notices/{id}/receipts` still lists reads only.
+
+### Administration
+
+- `POST /api/users`, `PATCH /api/users/{id}` (admin): create accounts, change role/depot, deactivate. A depot is required for depot-scoped roles; admins cannot deactivate or demote themselves; inactive users are rejected at login and on every request.  
+- `PATCH /api/vehicles/{id}`: status changes by admins or the owning depot manager; only admins move buses between depots.
 
 ## 6. API surface
 
@@ -101,6 +110,8 @@ Auto-documented at `/docs` (OpenAPI). Prefix `/api/…` for modules; `/health` f
 - Vite + React Router.  
 - `AuthProvider` stores JWT in `localStorage`.  
 - Role-gated routes; NCR-themed navy/teal/gold UI.  
+- Shared primitives in `components/ui.tsx` (status-aware `Badge`, `PageHeader`, `StatCard`, `SectionTitle`, `Notice`, inline SVG `Icon`); inputs and buttons share a 40px height so form rows align. Desktop nav appears at `xl`, with a collapsible menu below.  
+- Pure helpers with unit tests: `lib/dates.ts`, `lib/geo.ts` (haversine, path length), `lib/sla.ts`.  
 - Driver experience is the same SPA at `/driver` with manifest + minimal service worker.
 
 ## 8. Trade-offs
@@ -116,11 +127,12 @@ Auto-documented at `/docs` (OpenAPI). Prefix `/api/…` for modules; `/health` f
 ## 9. What we’d improve next
 
 1. WebSocket fan-out for live markers.  
-2. PostGIS geofence breach detection.  
-3. IMS SLA timers (P1/P2/P3).  
-4. History replay scrubber.  
-5. Alembic-only migrations in CI; object storage for photos.  
-6. Production GPS: device → queue → processor → `gps_ping` (show as a slide; not built here).
+2. Persist SLA targets server-side and escalate breaches (notification to control room).  
+3. Geofence alerts as stored events with acknowledgement, not only a live query.  
+4. Alembic-only migrations in CI; object storage for photos.  
+5. Production GPS: device → queue → processor → `gps_ping` (show as a slide; not built here).
+
+Built since the MVP: PostGIS geofence breach detection, IMS SLA timers, history replay scrubber, copy-last-week rostering, audience read receipts, and admin fleet/user management.
 
 ## 10. Honesty for evaluators
 

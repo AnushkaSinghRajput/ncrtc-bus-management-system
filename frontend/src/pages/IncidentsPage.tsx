@@ -181,7 +181,7 @@ function IncidentList() {
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
         <div className="panel overflow-hidden">
-          <div className="table-head hidden grid-cols-[64px_minmax(0,1fr)_170px_110px] gap-4 px-5 py-3 md:grid">
+          <div className="data-head hidden grid-cols-[64px_minmax(0,1fr)_170px_130px] gap-4 px-5 py-3 md:grid">
             <span>Severity</span>
             <span>Incident</span>
             <span>SLA</span>
@@ -194,10 +194,10 @@ function IncidentList() {
           ) : (
             <ul>
               {sorted.map((i) => (
-                <li key={i.id} className="table-row">
+                <li key={i.id} className="data-row">
                   <Link
                     to={`/incidents/${i.id}`}
-                    className="grid grid-cols-[64px_minmax(0,1fr)] items-center gap-x-4 gap-y-2 px-5 py-3.5 md:grid-cols-[64px_minmax(0,1fr)_170px_110px]"
+                    className="grid grid-cols-[64px_minmax(0,1fr)] items-center gap-x-4 gap-y-2 px-5 py-3.5 md:grid-cols-[64px_minmax(0,1fr)_170px_130px]"
                   >
                     <span>
                       <Badge value={i.severity} />
@@ -382,7 +382,7 @@ function IncidentDetail({ id }: { id: number }) {
             label="Location"
             value={incident.location_lat != null ? `${incident.location_lat.toFixed(4)}, ${incident.location_lng?.toFixed(4)}` : "—"}
           />
-          <Meta label={sla.stage === "done" ? "Outcome" : "SLA stage"} value={sla.stage === "done" ? sla.label : `${sla.stage} · ${sla.label}`} />
+          <Meta label={sla.stage === "done" ? "SLA outcome" : `SLA · ${sla.stage}`} value={sla.label} />
         </dl>
 
         <p className="mt-5 whitespace-pre-line rounded-xl bg-ncrtc-mist p-4 text-sm leading-relaxed text-slate-700">{incident.description}</p>
@@ -397,7 +397,7 @@ function IncidentDetail({ id }: { id: number }) {
 
       {error && <ErrorBox message={error} />}
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_380px] lg:items-start">
         <section className="panel p-5">
           <SectionTitle>Timeline</SectionTitle>
           <ol className="relative ml-2 space-y-5 border-l-2 border-slate-100 pl-6">
@@ -477,7 +477,7 @@ function Meta({ label, value }: { label: string; value: string }) {
   return (
     <div>
       <dt className="label !mb-1">{label}</dt>
-      <dd className="font-medium capitalize text-ncrtc-ink">{value}</dd>
+      <dd className="font-medium text-ncrtc-ink first-letter:uppercase">{value}</dd>
     </div>
   );
 }

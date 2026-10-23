@@ -233,5 +233,23 @@ class NoticeReadOut(ORMModel):
     acknowledged: bool
 
 
+class NoticeAudienceMember(BaseModel):
+    user_id: int
+    username: str
+    full_name: str
+    role: UserRole
+    depot_id: int | None
+    read_at: datetime | None
+    acknowledged: bool
+
+
+class NoticeAudienceOut(BaseModel):
+    notice_id: int
+    total: int
+    read: int
+    acknowledged: int
+    members: list[NoticeAudienceMember]
+
+
 class MessageOut(BaseModel):
     message: str

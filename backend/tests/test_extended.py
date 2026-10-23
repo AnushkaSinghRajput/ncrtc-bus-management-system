@@ -49,6 +49,38 @@ def test_geofence_alerts_shape_and_depot_scope(api_up):
     assert all(a["depot_id"] == me["depot_id"] for a in scoped.json())
 
 
+def test_notice_audience_tracks_unread_members(api_up):
+    admin = token("admin")
+    created = httpx.post(
+        f"{BASE}/api/notices",
+        headers=auth(admin),
+        json={"title": "Audience check", "body": "Please read", "audience": {"type": "all_drivers"}, "ack_required": True},
+        timeout=15,
+    )
+    assert created.status_code == 201, created.text
+    nid = created.json()["id"]
+
+    before = httpx.get(f"{BASE}/api/notices/{nid}/audience", headers=auth(admin), timeout=20).json()
+    assert before["total"] > 1
+    assert before["read"] == 0
+    assert all(m["role"] in ("driver", "conductor") for m in before["members"])
+
+    drv = token("driver1")
+    assert httpx.post(f"{BASE}/api/notices/{nid}/acknowledge", headers=auth(drv), timeout=15).status_code == 200
+    after = httpx.get(f"{BASE}/api/notices/{nid}/audience", headers=auth(admin), timeout=20).json()
+    assert after["read"] == 1 and after["acknowledged"] == 1
+    d1 = next(m for m in after["members"] if m["username"] == "driver1")
+    assert d1["read_at"] and d1["acknowledged"]
+
+    mgr = token("manager1")
+    me = httpx.get(f"{BASE}/api/auth/me", headers=auth(mgr), timeout=10).json()
+    scoped = httpx.get(f"{BASE}/api/notices/{nid}/audience", headers=auth(mgr), timeout=20).json()
+    assert scoped["total"] < after["total"]
+    assert all(m["depot_id"] == me["depot_id"] for m in scoped["members"])
+
+    assert httpx.get(f"{BASE}/api/notices/{nid}/audience", headers=auth(drv), timeout=15).status_code == 403
+
+
 def test_copy_week_creates_drafts_and_is_idempotent(api_up):
     mgr = token("manager1")
     src = date.today() - timedelta(days=date.today().weekday())

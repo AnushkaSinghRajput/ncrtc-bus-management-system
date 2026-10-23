@@ -146,6 +146,17 @@ class LiveVehicleOut(BaseModel):
     route_name: str | None = None
 
 
+class GeofenceAlertOut(BaseModel):
+    vehicle_id: int
+    reg_no: str
+    depot_id: int
+    depot_name: str
+    lat: float
+    lng: float
+    ts: datetime
+    distance_m: float
+
+
 class IncidentCreate(BaseModel):
     type: IncidentType
     severity: IncidentSeverity

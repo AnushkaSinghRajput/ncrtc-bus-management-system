@@ -6,7 +6,7 @@ import { Link } from "react-router-dom";
 import { api } from "../lib/api";
 import { Empty, ErrorBox, Loading } from "../components/States";
 import { Badge, Icon, PageHeader } from "../components/ui";
-import type { Depot, GpsPing, LiveVehicle } from "../types";
+import type { Depot, GeofenceAlert, GpsPing, LiveVehicle } from "../types";
 
 type MotionState = "moving" | "stopped" | "stale";
 
@@ -69,6 +69,8 @@ export default function AvlsPage() {
   const [focus, setFocus] = useState<[number, number] | null>(null);
   const [trail, setTrail] = useState<GpsPing[]>([]);
   const [search, setSearch] = useState("");
+  const [alerts, setAlerts] = useState<GeofenceAlert[]>([]);
+  const [alertsOpen, setAlertsOpen] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [updatedAt, setUpdatedAt] = useState<string>("");
@@ -82,9 +84,13 @@ export default function AvlsPage() {
     async function load() {
       try {
         const q = depotId ? `?depot_id=${depotId}` : "";
-        const data = await api<LiveVehicle[]>(`/api/avls/live${q}`);
+        const [data, fence] = await Promise.all([
+          api<LiveVehicle[]>(`/api/avls/live${q}`),
+          api<GeofenceAlert[]>(`/api/avls/geofence-alerts${q}`).catch(() => []),
+        ]);
         if (!cancelled) {
           setVehicles(data.sort((a, b) => a.reg_no.localeCompare(b.reg_no)));
+          setAlerts(fence);
           setUpdatedAt(new Date().toLocaleTimeString());
           setLoading(false);
         }
@@ -179,6 +185,50 @@ export default function AvlsPage() {
           </>
         }
       />
+
+      {alerts.length > 0 && (
+        <div className="overflow-hidden rounded-2xl border border-red-200 bg-red-50/90 shadow-sm">
+          <button
+            className="flex w-full items-center gap-3 px-5 py-3 text-left"
+            onClick={() => setAlertsOpen((o) => !o)}
+            aria-expanded={alertsOpen}
+          >
+            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-red-100 text-red-700">
+              <Icon name="shield" className="h-4 w-4" />
+            </span>
+            <span className="flex-1 text-sm">
+              <strong className="text-red-800">
+                Geofence breach · {alerts.length} unscheduled {alerts.length === 1 ? "bus is" : "buses are"} outside the depot
+              </strong>
+              <span className="block text-xs text-red-700/80">
+                No published duty today, last ping outside the depot polygon (checked with PostGIS).
+              </span>
+            </span>
+            <span className="text-xs font-semibold text-red-700">{alertsOpen ? "Hide" : "Review"}</span>
+          </button>
+          {alertsOpen && (
+            <ul className="grid gap-2 border-t border-red-200 bg-white/60 p-3 sm:grid-cols-2 xl:grid-cols-3">
+              {alerts.map((a) => (
+                <li key={a.vehicle_id}>
+                  <button
+                    onClick={() => {
+                      setSelectedId(a.vehicle_id);
+                      setFocus([a.lat, a.lng]);
+                    }}
+                    className="flex w-full items-center justify-between gap-3 rounded-lg bg-white px-3 py-2 text-left text-sm ring-1 ring-red-100 transition hover:ring-red-300"
+                  >
+                    <span>
+                      <span className="block font-semibold text-ncrtc-navy">{a.reg_no}</span>
+                      <span className="block text-xs text-slate-500">{a.depot_name}</span>
+                    </span>
+                    <Badge tone="red">{(a.distance_m / 1000).toFixed(1)} km away</Badge>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
         <div className="panel relative h-[600px] overflow-hidden">
@@ -309,6 +359,7 @@ export default function AvlsPage() {
                           {v.route_code ? `${v.route_code} · ${v.driver_name ?? ""}` : "No duty today"}
                         </span>
                       </span>
+                      {alerts.some((a) => a.vehicle_id === v.vehicle_id) && <Badge tone="red">Fence</Badge>}
                       <span className="text-xs tabular-nums opacity-70">{v.speed_kmh.toFixed(0)} km/h</span>
                     </button>
                   </li>

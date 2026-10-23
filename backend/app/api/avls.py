@@ -1,13 +1,13 @@
 from datetime import date, datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import func
+from sqlalchemy import func, text
 from sqlalchemy.orm import Session
 
 from app.core.deps import depot_filter_ids, get_current_user
 from app.database import get_db
 from app.models.entities import Duty, DutyStatus, GpsPing, Route, User, Vehicle
-from app.schemas.common import GpsPingOut, LiveVehicleOut
+from app.schemas.common import GeofenceAlertOut, GpsPingOut, LiveVehicleOut
 
 router = APIRouter(prefix="/api/avls", tags=["avls"])
 
@@ -78,6 +78,59 @@ def live_vehicles(
             )
         )
     return result
+
+
+GEOFENCE_SQL = text(
+    """
+    WITH latest AS (
+        SELECT DISTINCT ON (vehicle_id) vehicle_id, lat, lng, ts
+        FROM gps_ping
+        WHERE ts >= :since
+        ORDER BY vehicle_id, ts DESC
+    )
+    SELECT v.id AS vehicle_id, v.reg_no, v.depot_id, d.name AS depot_name,
+           l.lat, l.lng, l.ts,
+           ST_Distance(
+               ST_SetSRID(ST_MakePoint(d.location_lng, d.location_lat), 4326)::geography,
+               ST_SetSRID(ST_MakePoint(l.lng, l.lat), 4326)::geography
+           ) AS distance_m
+    FROM latest l
+    JOIN vehicle v ON v.id = l.vehicle_id
+    JOIN depot d ON d.id = v.depot_id
+    WHERE NOT ST_Contains(
+              ST_SetSRID(ST_GeomFromGeoJSON(d.polygon_geojson::text), 4326),
+              ST_SetSRID(ST_MakePoint(l.lng, l.lat), 4326)
+          )
+      AND NOT EXISTS (
+          SELECT 1 FROM duty du
+          WHERE du.vehicle_id = v.id AND du.date = :today
+            AND du.status IN ('published', 'acknowledged')
+      )
+      AND (CAST(:depot_id AS INTEGER) IS NULL OR v.depot_id = CAST(:depot_id AS INTEGER))
+    ORDER BY distance_m DESC
+    """
+)
+
+
+@router.get("/geofence-alerts", response_model=list[GeofenceAlertOut])
+def geofence_alerts(
+    depot_id: int | None = Query(None),
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+) -> list[GeofenceAlertOut]:
+    """Buses with no published duty today whose latest ping (last 10 min) is outside their depot polygon."""
+    scoped = depot_filter_ids(user)
+    if scoped is not None:
+        depot_id = scoped
+    rows = db.execute(
+        GEOFENCE_SQL,
+        {
+            "since": datetime.now(timezone.utc) - timedelta(minutes=10),
+            "today": date.today(),
+            "depot_id": depot_id,
+        },
+    ).mappings()
+    return [GeofenceAlertOut(**r) for r in rows]
 
 
 @router.get("/vehicles/{vehicle_id}/trail", response_model=list[GpsPingOut])

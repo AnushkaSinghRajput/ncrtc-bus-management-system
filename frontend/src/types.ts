@@ -84,6 +84,17 @@ export interface LiveVehicle {
   route_name?: string | null;
 }
 
+export interface GeofenceAlert {
+  vehicle_id: number;
+  reg_no: string;
+  depot_id: number;
+  depot_name: string;
+  lat: number;
+  lng: number;
+  ts: string;
+  distance_m: number;
+}
+
 export interface GpsPing {
   id: number;
   vehicle_id: number;

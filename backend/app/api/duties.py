@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session, joinedload
@@ -159,6 +159,62 @@ def publish_week(
         d.status = DutyStatus.published
     db.commit()
     return MessageOut(message=f"Published {len(duties)} duties")
+
+
+@router.post("/copy-week", response_model=MessageOut)
+def copy_week(
+    from_week_start: date = Query(..., description="Monday of the source week"),
+    to_week_start: date = Query(..., description="Monday of the target week"),
+    depot_id: int | None = Query(None),
+    db: Session = Depends(get_db),
+    user: User = Depends(require_roles(UserRole.admin, UserRole.depot_manager)),
+) -> MessageOut:
+    """Copy a week's roster into another week as drafts, skipping drivers already rostered on a target day."""
+    if from_week_start == to_week_start:
+        raise HTTPException(status_code=400, detail="Source and target weeks are the same")
+    shift = to_week_start - from_week_start
+    q = db.query(Duty).filter(
+        Duty.date >= from_week_start,
+        Duty.date < from_week_start + timedelta(days=7),
+        Duty.status != DutyStatus.cancelled,
+    )
+    scoped = depot_filter_ids(user)
+    if scoped is not None:
+        q = q.filter(Duty.depot_id == scoped)
+    elif depot_id is not None:
+        q = q.filter(Duty.depot_id == depot_id)
+
+    taken = {
+        (driver_id, day)
+        for driver_id, day in db.query(Duty.driver_id, Duty.date).filter(
+            Duty.date >= to_week_start,
+            Duty.date < to_week_start + timedelta(days=7),
+            Duty.status != DutyStatus.cancelled,
+        )
+    }
+    created = skipped = 0
+    for src in q.all():
+        target_day = src.date + shift
+        if (src.driver_id, target_day) in taken:
+            skipped += 1
+            continue
+        db.add(
+            Duty(
+                date=target_day,
+                vehicle_id=src.vehicle_id,
+                driver_id=src.driver_id,
+                conductor_id=src.conductor_id,
+                route_id=src.route_id,
+                depot_id=src.depot_id,
+                start_time=src.start_time,
+                end_time=src.end_time,
+                status=DutyStatus.draft,
+            )
+        )
+        taken.add((src.driver_id, target_day))
+        created += 1
+    db.commit()
+    return MessageOut(message=f"Copied {created} duties as drafts ({skipped} skipped: driver already rostered)")
 
 
 @router.post("/{duty_id}/acknowledge", response_model=DutyOut)

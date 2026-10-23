@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+from datetime import date, timedelta
 
 import httpx
 import pytest
@@ -46,3 +47,46 @@ def test_geofence_alerts_shape_and_depot_scope(api_up):
     scoped = httpx.get(f"{BASE}/api/avls/geofence-alerts?depot_id=999", headers=auth(mgr), timeout=20)
     assert scoped.status_code == 200
     assert all(a["depot_id"] == me["depot_id"] for a in scoped.json())
+
+
+def test_copy_week_creates_drafts_and_is_idempotent(api_up):
+    mgr = token("manager1")
+    src = date.today() - timedelta(days=date.today().weekday())
+    # Far-future target keeps the test from colliding with seeded or demo weeks.
+    target = src + timedelta(weeks=52 + (src.toordinal() % 50))
+    first = httpx.post(
+        f"{BASE}/api/duties/copy-week?from_week_start={src}&to_week_start={target}",
+        headers=auth(mgr),
+        timeout=30,
+    )
+    assert first.status_code == 200, first.text
+    copied = httpx.get(
+        f"{BASE}/api/duties?from_date={target}&to_date={target + timedelta(days=6)}",
+        headers=auth(mgr),
+        timeout=15,
+    ).json()
+    assert copied, "expected the current week roster to be copied"
+    assert all(d["status"] == "draft" for d in copied)
+
+    again = httpx.post(
+        f"{BASE}/api/duties/copy-week?from_week_start={src}&to_week_start={target}",
+        headers=auth(mgr),
+        timeout=30,
+    )
+    assert again.status_code == 200
+    assert again.json()["message"].startswith("Copied 0 duties")
+
+    same = httpx.post(
+        f"{BASE}/api/duties/copy-week?from_week_start={src}&to_week_start={src}",
+        headers=auth(mgr),
+        timeout=15,
+    )
+    assert same.status_code == 400
+
+    drv = token("driver1")
+    forbidden = httpx.post(
+        f"{BASE}/api/duties/copy-week?from_week_start={src}&to_week_start={target}",
+        headers=auth(drv),
+        timeout=15,
+    )
+    assert forbidden.status_code == 403

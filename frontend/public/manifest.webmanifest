@@ -1,0 +1,17 @@
+{
+  "name": "NCRTC Driver",
+  "short_name": "NCRTC",
+  "start_url": "/driver",
+  "display": "standalone",
+  "background_color": "#0B3D5C",
+  "theme_color": "#0B3D5C",
+  "description": "NCRTC Bus Management System — Driver PWA",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

@@ -33,6 +33,8 @@ export default function HistoryPage() {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [vehicleId, setVehicleId] = useState(presetVehicle ?? "");
   const [day, setDay] = useState(() => {
+    const preset = params.get("day");
+    if (preset && /^\d{4}-\d{2}-\d{2}$/.test(preset)) return preset;
     const d = new Date();
     if (!presetVehicle) d.setDate(d.getDate() - 1);
     return toLocalDateString(d);

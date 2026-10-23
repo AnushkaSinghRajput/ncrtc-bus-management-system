@@ -107,6 +107,10 @@ cd frontend && npm install && npm test
 7. Fleet & Users → put a bus into maintenance, create a driver account.  
 8. http://localhost:8000/docs  
 
+## Documents
+
+[Additional assumptions and decisions (PDF)](docs/NCRTC_BMS_Assumptions_and_Decisions.pdf) — what this build assumes, what was chosen, and what from the brief is not built. Written for a team-leader review. It matches the repository as of 23 October 2026.
+
 ## Repo layout
 
 ```
@@ -114,6 +118,7 @@ backend/     FastAPI, Alembic, seed, gps_tick, tests
 frontend/    React admin shell + /driver PWA
 docker-compose.yml
 ARCHITECTURE.md
+docs/NCRTC_BMS_Assumptions_and_Decisions.pdf
 media/ncrtc-bms/   screenshots
 ```
 

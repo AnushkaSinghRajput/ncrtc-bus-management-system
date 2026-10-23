@@ -96,6 +96,8 @@ def test_panic_creates_p1(api_up):
     body = r.json()
     assert body["severity"] == "P1"
     assert body["status"] == "open"
+    if body["vehicle_id"]:
+        assert body["location_lat"] is not None and body["location_lng"] is not None
 
 
 def test_admin_can_create_notice(api_up):

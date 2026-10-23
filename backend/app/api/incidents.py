@@ -11,6 +11,7 @@ from app.database import get_db
 from app.models.entities import (
     Duty,
     DutyStatus,
+    GpsPing,
     Incident,
     IncidentEvent,
     IncidentSeverity,
@@ -203,6 +204,11 @@ def panic_button(
         .first()
     )
     vehicle_id = duty.vehicle_id if duty else None
+    last_ping = (
+        db.query(GpsPing).filter(GpsPing.vehicle_id == vehicle_id).order_by(GpsPing.ts.desc()).first()
+        if vehicle_id
+        else None
+    )
     incident = Incident(
         type=IncidentType.other,
         severity=IncidentSeverity.P1,
@@ -211,6 +217,8 @@ def panic_button(
         vehicle_id=vehicle_id,
         depot_id=user.depot_id,
         description=f"PANIC alert from {user.full_name} ({user.username})",
+        location_lat=last_ping.lat if last_ping else None,
+        location_lng=last_ping.lng if last_ping else None,
     )
     db.add(incident)
     db.flush()

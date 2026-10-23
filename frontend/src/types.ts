@@ -12,6 +12,7 @@ export interface User {
   role: Role;
   depot_id: number | null;
   phone: string | null;
+  is_active?: boolean;
 }
 
 export interface Depot {

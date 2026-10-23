@@ -10,6 +10,7 @@ import SchedulingPage from "./pages/SchedulingPage";
 import IncidentsPage from "./pages/IncidentsPage";
 import NoticesPage from "./pages/NoticesPage";
 import DriverPage from "./pages/DriverPage";
+import AdminPage from "./pages/AdminPage";
 import type { Role } from "./types";
 
 function Protected({ children, roles }: { children: React.ReactNode; roles?: Role[] }) {
@@ -69,6 +70,14 @@ export default function App() {
         <Route path="incidents" element={<IncidentsPage />} />
         <Route path="incidents/:id" element={<IncidentsPage />} />
         <Route path="notices" element={<NoticesPage />} />
+        <Route
+          path="admin"
+          element={
+            <Protected roles={["admin"]}>
+              <AdminPage />
+            </Protected>
+          }
+        />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

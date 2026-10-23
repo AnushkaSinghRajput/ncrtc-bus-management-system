@@ -81,6 +81,58 @@ def test_notice_audience_tracks_unread_members(api_up):
     assert httpx.get(f"{BASE}/api/notices/{nid}/audience", headers=auth(drv), timeout=15).status_code == 403
 
 
+def test_admin_manages_users_and_vehicles(api_up):
+    admin = token("admin")
+    suffix = str(abs(hash(os.urandom(4))) % 10**6)
+    username = f"qa_driver_{suffix}"
+
+    missing_depot = httpx.post(
+        f"{BASE}/api/users",
+        headers=auth(admin),
+        json={"username": username, "full_name": "QA Driver", "role": "driver", "password": "longenough1"},
+        timeout=15,
+    )
+    assert missing_depot.status_code == 400
+
+    created = httpx.post(
+        f"{BASE}/api/users",
+        headers=auth(admin),
+        json={"username": username, "full_name": "QA Driver", "role": "driver", "depot_id": 1, "password": "longenough1"},
+        timeout=15,
+    )
+    assert created.status_code == 201, created.text
+    uid = created.json()["id"]
+    login = httpx.post(f"{BASE}/api/auth/login", data={"username": username, "password": "longenough1"}, timeout=30)
+    assert login.status_code == 200
+
+    off = httpx.patch(f"{BASE}/api/users/{uid}", headers=auth(admin), json={"is_active": False}, timeout=15)
+    assert off.status_code == 200 and off.json()["is_active"] is False
+    blocked = httpx.post(f"{BASE}/api/auth/login", data={"username": username, "password": "longenough1"}, timeout=30)
+    assert blocked.status_code in (400, 401)
+
+    me = httpx.get(f"{BASE}/api/auth/me", headers=auth(admin), timeout=10).json()
+    assert httpx.patch(f"{BASE}/api/users/{me['id']}", headers=auth(admin), json={"is_active": False}, timeout=15).status_code == 400
+
+    mgr = token("manager1")
+    assert httpx.post(
+        f"{BASE}/api/users",
+        headers=auth(mgr),
+        json={"username": f"x{suffix}", "full_name": "Nope", "role": "driver", "depot_id": 1, "password": "longenough1"},
+        timeout=15,
+    ).status_code == 403
+
+    mgr_depot = httpx.get(f"{BASE}/api/auth/me", headers=auth(mgr), timeout=10).json()["depot_id"]
+    own = httpx.get(f"{BASE}/api/vehicles", headers=auth(mgr), timeout=15).json()[0]
+    prev_status = own["status"]
+    upd = httpx.patch(f"{BASE}/api/vehicles/{own['id']}", headers=auth(mgr), json={"status": "maintenance"}, timeout=15)
+    assert upd.status_code == 200 and upd.json()["status"] == "maintenance"
+    httpx.patch(f"{BASE}/api/vehicles/{own['id']}", headers=auth(mgr), json={"status": prev_status}, timeout=15)
+    other_depot = 2 if mgr_depot != 2 else 3
+    assert httpx.patch(
+        f"{BASE}/api/vehicles/{own['id']}", headers=auth(mgr), json={"depot_id": other_depot}, timeout=15
+    ).status_code == 403
+
+
 def test_copy_week_creates_drafts_and_is_idempotent(api_up):
     mgr = token("manager1")
     src = date.today() - timedelta(days=date.today().weekday())

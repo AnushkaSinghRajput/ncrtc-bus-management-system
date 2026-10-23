@@ -29,6 +29,7 @@ class UserOut(ORMModel):
     role: UserRole
     depot_id: int | None
     phone: str | None
+    is_active: bool = True
 
 
 class LoginResponse(BaseModel):

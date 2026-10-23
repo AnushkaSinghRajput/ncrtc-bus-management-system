@@ -13,6 +13,7 @@ const links: { to: string; label: string; icon: IconName; roles?: Role[] }[] = [
   { to: "/scheduling", label: "Scheduling", icon: "calendar", roles: ["admin", "depot_manager"] },
   { to: "/incidents", label: "Incidents", icon: "alert" },
   { to: "/notices", label: "Notices", icon: "megaphone" },
+  { to: "/admin", label: "Fleet & Users", icon: "users", roles: ["admin"] },
   { to: "/driver", label: "My Duty", icon: "bus", roles: ["driver", "conductor"] },
 ];
 
@@ -71,14 +72,17 @@ export default function Layout() {
             </div>
           </NavLink>
 
-          <nav className="hidden items-center gap-1 lg:flex">{visible.map((l) => navItem(l))}</nav>
+          <nav className="hidden items-center gap-0.5 xl:flex">{visible.map((l) => navItem(l))}</nav>
 
           <div className="flex items-center gap-2">
-            <div className="hidden items-center gap-2.5 rounded-full bg-white/10 py-1 pl-1 pr-3 sm:flex">
+            <div
+              className="hidden items-center gap-2.5 rounded-full bg-white/10 py-1 pl-1 pr-3 sm:flex xl:pr-1 2xl:pr-3"
+              title={`${user?.full_name ?? ""} · ${user ? ROLE_LABEL[user.role] : ""}`}
+            >
               <span className="flex h-8 w-8 items-center justify-center rounded-full bg-ncrtc-teal text-xs font-bold">
                 {initials(user?.full_name)}
               </span>
-              <span className="leading-tight">
+              <span className="leading-tight xl:hidden 2xl:block">
                 <span className="block max-w-[10rem] truncate text-sm font-medium">{user?.full_name}</span>
                 <span className="block text-[11px] text-white/60">{user ? ROLE_LABEL[user.role] : ""}</span>
               </span>
@@ -92,7 +96,7 @@ export default function Layout() {
               <Icon name="logout" className="h-5 w-5" />
             </button>
             <button
-              className="flex h-9 w-9 items-center justify-center rounded-lg text-white/80 transition hover:bg-white/10 lg:hidden"
+              className="flex h-9 w-9 items-center justify-center rounded-lg text-white/80 transition hover:bg-white/10 xl:hidden"
               onClick={() => setOpen((o) => !o)}
               aria-label="Toggle navigation"
               aria-expanded={open}
@@ -102,7 +106,7 @@ export default function Layout() {
           </div>
         </div>
         {open && (
-          <nav className="mx-auto grid max-w-7xl gap-1 border-t border-white/10 px-4 py-3 sm:grid-cols-2 lg:hidden">
+          <nav className="mx-auto grid max-w-7xl gap-1 border-t border-white/10 px-4 py-3 sm:grid-cols-2 xl:hidden">
             {visible.map((l) => navItem(l, true))}
           </nav>
         )}
